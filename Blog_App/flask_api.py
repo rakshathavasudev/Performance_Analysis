@@ -3,6 +3,8 @@ from flask import request
 from flask_restful import Resource, Api
 from flask_restful import reqparse
 from flaskext.mysql import MySQL
+import json
+import datetime
 
 mysql = MySQL()
 app = Flask(__name__)
@@ -22,11 +24,11 @@ class CreateBlog(Resource):
 		try:
 			# Parse the arguments
 			parser = reqparse.RequestParser()
-			parser.add_argument('blog_name', type=str, help='Name of the blog')
+			parser.add_argument('title', type=str, help='Name of the blog')
 			parser.add_argument('content', type=str, help='Content of the blog')
 			args = parser.parse_args()
 
-			_blogname = args['blog_name']
+			_blogname = args['title']
 			_content = args['content']
 		
 
@@ -48,17 +50,21 @@ class CreateBlog(Resource):
 		except Exception as e:
 			return {'error': str(e)}
 
+def convert_timestamp(item_date_object):
+	if isinstance(item_date_object, (datetime.date, datetime.datetime)):
+		return item_date_object.timestamp()
+
 
 class GetBlog(Resource):
 	def get(self):
 		try:
 			# Parse the arguments
 			parser = reqparse.RequestParser()
-			parser.add_argument('blog_name', type=str, help='Name of the blog')
+			parser.add_argument('title', type=str, help='Name of the blog')
 			#parser.add_argument('password', type=str, help='Password to create user')
 			args = parser.parse_args()
 
-			_blogname = args['blog_name']
+			_blogname = args['title']
 			#_userPassword = args['password']
 
 			conn = mysql.connect()
@@ -66,8 +72,14 @@ class GetBlog(Resource):
 
 			cursor.callproc('spGetBlogbyname',(_blogname,))
 			data = cursor.fetchall()
+	
+					
 			if (len(data)>0):
-				return {'StatusCode':'200','Message':'Blog exists'}
+				with open("data_file.json", "w") as write_file:
+					
+					json.dump(data, write_file,default=convert_timestamp)
+					#print(data)
+					return {'StatusCode':'200','Message':'Blog exists'}
 			else:
 				return {'StatusCode':'1000','Message': 'Blog not found'}
 
@@ -80,4 +92,5 @@ api.add_resource(CreateBlog, '/CreateBlog')
 
 if __name__ == '__main__':
 	app.run(debug=True)
+
 
